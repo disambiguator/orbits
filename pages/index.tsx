@@ -1,9 +1,10 @@
-import { OrbitControls, Ring, Sphere } from "@react-three/drei";
+import { Line, OrbitControls, Ring, Sphere } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Leva } from "leva";
 import { sumBy } from "lodash";
 import React, { useRef } from "react";
-import { DoubleSide, Group, Mesh, Vector3 } from "three";
+import { Color, DoubleSide, Group, Mesh, Vector3 } from "three";
+import { Line2 } from "three-stdlib";
 
 const spiroLength = 300;
 
@@ -27,21 +28,9 @@ const randPosition = (): Seed => ({
   phiSpeed: rand(1, 1.5),
 });
 
-const seeds = [
-  randPosition(),
-  randPosition(),
-  randPosition(),
-  randPosition(),
-  randPosition(),
-];
+const seeds = [randPosition(), randPosition(), randPosition()];
 
-const points = [
-  new Vector3(),
-  new Vector3(),
-  new Vector3(),
-  new Vector3(),
-  new Vector3(),
-];
+const points = [new Vector3(), new Vector3(), new Vector3()];
 
 let trails = new Array(spiroLength * 3).fill(0);
 
@@ -59,7 +48,7 @@ function generateVertices(seeds: Seed[], time: number) {
   const z = sumBy(points, "z") / points.length;
 
   trails = [...trails.slice(3), x, y, z];
-  return new Float32Array(trails);
+  return trails;
 }
 
 const Orbits = ({ seed }: { seed: Seed }) => {
@@ -90,27 +79,21 @@ const Orbits = ({ seed }: { seed: Seed }) => {
 };
 
 const Spiro = ({ seeds }: { seeds: Array<Seed> }) => {
-  const positionAttributeRef = useRef<THREE.BufferAttribute>();
+  const lineRef = useRef<Line2>(null);
 
   useFrame(({ clock }) => {
-    const positionAttribute = positionAttributeRef.current;
-    positionAttribute.array = generateVertices(seeds, clock.elapsedTime);
-    positionAttribute.needsUpdate = true;
+    const { geometry } = lineRef.current!;
+    geometry.setPositions(generateVertices(seeds, clock.elapsedTime));
   });
 
   return (
     <group rotation={[0, Math.PI / 2, 0]}>
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            ref={positionAttributeRef}
-            attachObject={["attributes", "position"]}
-            count={spiroLength}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <meshBasicMaterial color="blue" />
-      </line>
+      <Line
+        ref={lineRef}
+        color={new Color(219, 193, 96)}
+        points={trails}
+        linewidth={3}
+      />
     </group>
   );
 };
@@ -128,13 +111,15 @@ export default function Page() {
         }
       `}</style>
       <Leva />
-      <Canvas mode="concurrent">
-        <OrbitControls />
-        <Spiro seeds={seeds} />
-        {seeds.map((seed, i) => (
-          <Orbits key={i} seed={seed} />
-        ))}
-      </Canvas>
+      <div style={{ background: "black" }}>
+        <Canvas mode="concurrent">
+          <OrbitControls />
+          <Spiro seeds={seeds} />
+          {seeds.map((seed, i) => (
+            <Orbits key={i} seed={seed} />
+          ))}
+        </Canvas>
+      </div>
     </React.StrictMode>
   );
 }
