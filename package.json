@@ -24,7 +24,6 @@
   "devDependencies": {
     "@babel/core": "^7.12.10",
     "@types/lodash": "^4.14.165",
-    "@types/node": "^14.14.9",
     "@types/react": "^17.0.0",
     "@types/styled-components": "^5.1.4",
     "@typescript-eslint/eslint-plugin": "^4.8.2",
@@ -54,11 +53,14 @@
     "next": "^10.0.3",
     "next-compose-plugins": "^2.2.1",
     "open-simplex-noise": "^2.4.0-pre4",
+    "pusher": "^5.0.0",
+    "pusher-js": "^7.0.3",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-ga": "^3.3.0",
     "three": "^0.127.0",
     "three-stdlib": "^1.2.1",
+    "uuid": "^8.3.2",
     "zustand": "^3.2.0"
   }
 }
