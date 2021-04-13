@@ -76,7 +76,11 @@ const Spiro = ({ seeds }: { seeds: Array<Seed> }) => {
   const lineRef = useRef<Line2>(null);
 
   const points = useMemo(() => {
-    return new Array(seeds.length).fill(new Vector3());
+    const a = new Array(seeds.length);
+    for (let i = 0; i < seeds.length; i++) {
+      a[i] = new Vector3();
+    }
+    return a;
   }, [seeds]);
 
   useFrame(({ clock }) => {
