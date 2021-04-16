@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import { airtableList } from "../airtable";
+import { airtableList } from "../lib/airtable";
 
 module.exports = async (req: VercelRequest, res: VercelResponse) => {
   await airtableList("orbits")

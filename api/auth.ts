@@ -1,21 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import Pusher from "pusher";
 import { v4 as uuidv4 } from "uuid";
-import { Seed } from "../seed";
-
-const {
-  APP_ID: appId,
-  KEY: key,
-  SECRET: secret,
-  CLUSTER: cluster,
-} = process.env;
-
-const pusher = new Pusher({
-  appId,
-  key,
-  secret,
-  cluster,
-});
+import pusher from "../lib/pusher";
+import { Seed } from "../lib/seed";
 
 module.exports = async (
   req: VercelRequest & { body: Seed },

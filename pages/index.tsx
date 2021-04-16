@@ -8,7 +8,7 @@ import * as PusherTypes from "pusher-js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Color, DoubleSide, Group, Mesh, Vector3 } from "three";
 import { Line2 } from "three-stdlib";
-import { Seed } from "../seed";
+import { Seed } from "../lib/seed";
 
 const spiroLength = 300;
 
@@ -25,8 +25,8 @@ const randPosition = (userId): Seed => ({
   userId,
 });
 
-const pusher = new Pusher("6f2ed4e683c352055a0b", {
-  cluster: "us3",
+const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+  cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
   authEndpoint: "/api/auth",
 });
 
@@ -174,7 +174,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async () => {
-  const res = await fetch("http://localhost:3000/api/seeds");
+  const res = await fetch(`${process.env.VERCEL_URL}/api/seeds`);
   const data: { seeds: Array<Seed> } = await res.json();
   return { props: { initialSeeds: data.seeds } };
 };

@@ -1,16 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import Pusher from "pusher";
-import { airtablePut } from "../airtable";
-import { Seed } from "../seed";
-
-const {
-  APP_ID: appId,
-  KEY: key,
-  SECRET: secret,
-  CLUSTER: cluster,
-} = process.env;
-
-const pusher = new Pusher({ appId, key, secret, cluster });
+import { airtablePut } from "../lib/airtable";
+import pusher from "../lib/pusher";
+import { Seed } from "../lib/seed";
 
 const addToOrbits = (seed: Seed) => airtablePut("orbits", seed);
 

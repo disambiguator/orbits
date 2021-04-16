@@ -1,15 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import Pusher from "pusher";
-import { airtableDelete } from "../airtable";
-
-const {
-  APP_ID: appId,
-  KEY: key,
-  SECRET: secret,
-  CLUSTER: cluster,
-} = process.env;
-
-const pusher = new Pusher({ appId, key, secret, cluster });
+import { airtableDelete } from "../lib/airtable";
+import pusher from "../lib/pusher";
 
 const deleteEvents = async (memberRemovalEvents) => {
   if (memberRemovalEvents.length > 0) {
