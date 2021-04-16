@@ -2,6 +2,7 @@ import { Line, OrbitControls, Ring, Sphere } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Leva } from "leva";
 import { sumBy } from "lodash";
+import { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -15,13 +16,13 @@ function rand(min: number, max: number) {
   return Math.random() * max + min;
 }
 
-const randPosition = (id): Seed => ({
+const randPosition = (userId): Seed => ({
   radius: rand(0.1, 2),
   theta: rand(0, 2 * Math.PI),
   phi: rand(0, 2 * Math.PI),
   thetaSpeed: rand(1, 1.5),
   phiSpeed: rand(1, 1.5),
-  id,
+  userId,
 });
 
 const pusher = new Pusher("6f2ed4e683c352055a0b", {
@@ -113,8 +114,8 @@ const Spiro = ({ seeds }: { seeds: Array<Seed> }) => {
   );
 };
 
-const App = () => {
-  const [seeds, setSeeds] = useState([]);
+const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
+  const [seeds, setSeeds] = useState(initialSeeds);
   useEffect(() => {
     const presenceChannel = pusher.subscribe(
       "presence-orbits"
@@ -170,7 +171,15 @@ const App = () => {
   );
 };
 
-export default function Page() {
+export const getServerSideProps: GetServerSideProps = async () => {
+  const res = await fetch("http://localhost:3000/api/seeds");
+  const data: { seeds: Array<Seed> } = await res.json();
+  return { props: { initialSeeds: data.seeds } };
+};
+
+export default function Page({
+  initialSeeds,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <React.StrictMode>
       <style global jsx>{`
@@ -186,7 +195,7 @@ export default function Page() {
       <div style={{ background: "black" }}>
         <Canvas mode="concurrent">
           <OrbitControls />
-          <App />
+          <App initialSeeds={initialSeeds} />
         </Canvas>
       </div>
     </React.StrictMode>

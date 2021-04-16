@@ -4,5 +4,5 @@ export interface Seed {
   phi: number;
   thetaSpeed: number;
   phiSpeed: number;
-  id: string;
+  userId: string;
 }

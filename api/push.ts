@@ -12,8 +12,7 @@ const {
 
 const pusher = new Pusher({ appId, key, secret, cluster });
 
-const addToOrbits = (seed: Seed): Promise<{ id: string }> =>
-  airtablePut("orbits", seed);
+const addToOrbits = (seed: Seed) => airtablePut("orbits", seed);
 
 const broadcastNeighbor = (seed: Seed) =>
   Promise.all([
@@ -30,6 +29,7 @@ module.exports = async (
       res.status(200).send("sent event succesfully");
     })
     .catch((e) => {
+      console.error(e.message);
       res.status(500).send({ error: e.message });
     });
 };

@@ -1,41 +1,25 @@
-const { AIRTABLE_API_KEY, AIRTABLE_ENDPOINT } = process.env;
-import fetch from "node-fetch";
+const { AIRTABLE_API_KEY, AIRTABLE_BASE } = process.env;
+import Airtable from "airtable";
 
-// interface AirtableRecord {
-//   fields: {
-//     id: string;
-//   };
-// }
-
-// interface AirtableRecordSet {
-//   records: Array<AirtableRecord>;
-// }
+const base = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(AIRTABLE_BASE);
 
 export const airtablePut = async (table: string, body: unknown) => {
-  const response = await fetch(`${AIRTABLE_ENDPOINT}/${table}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ fields: body }),
-  });
-
-  if (!response.ok) {
-    // @ts-ignore
-    throw Error(response.error.message);
-  }
-  return response.json();
+  const result = await base(table).create(body);
+  console.log("created ", result.getId());
+  return result;
 };
 
-// export const airtableList = (table: string): Promise<AirtableRecordSet> =>
-//   fetch(`${AIRTABLE_ENDPOINT}/${table}?api_key=${AIRTABLE_API_KEY}`).json();
+export const airtableList = async (table: string) => {
+  const records = await base(table).select().firstPage();
+  return records;
+};
 
-// export const airtableShow = (table: string, id: string) =>
-//   fetchJson(`${AIRTABLE_ENDPOINT}/${table}/${id}`, {
-//     headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
-//   });
+export const airtableDelete = async (table: string, userId: string) => {
+  const records = await base(table)
+    .select({
+      filterByFormula: `{userId} = '${userId}'`,
+    })
+    .firstPage();
 
-// type AirtableResponse = {
-//   fields: Record<string, unknown>;
-// };
+  records.forEach(async (r) => await r.destroy());
+};
