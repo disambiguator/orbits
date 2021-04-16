@@ -5,7 +5,7 @@ const base = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(AIRTABLE_BASE);
 
 export const airtablePut = async (table: string, body: unknown) => {
   const result = await base(table).create(body);
-  console.log("created ", result.getId());
+  console.debug("created ", result.getId());
   return result;
 };
 
@@ -14,12 +14,18 @@ export const airtableList = async (table: string) => {
   return records;
 };
 
-export const airtableDelete = async (table: string, userId: string) => {
+export const airtableDelete = async (table: string, userIds: string[]) => {
   const records = await base(table)
     .select({
-      filterByFormula: `{userId} = '${userId}'`,
+      filterByFormula: `OR(${userIds
+        .map((u) => `{userId} = '${u}'`)
+        .join(", ")})`,
     })
     .firstPage();
 
-  records.forEach(async (r) => await r.destroy());
+  if (records.length === 0) {
+    console.log("No records found for userIds", userIds);
+  }
+
+  return Promise.all(records.map((r) => r.destroy()));
 };

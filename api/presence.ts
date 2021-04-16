@@ -1,6 +1,5 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import Pusher from "pusher";
-import * as PusherTypes from "pusher";
 import { airtableDelete } from "../airtable";
 
 const {
@@ -13,31 +12,38 @@ const {
 const pusher = new Pusher({ appId, key, secret, cluster });
 
 const deleteEvents = async (memberRemovalEvents) => {
-  memberRemovalEvents.forEach(async (event) => {
-    console.log(`deleting ${event.user_id}`);
-    await airtableDelete("orbits", event.user_id);
-  });
+  if (memberRemovalEvents.length > 0) {
+    await airtableDelete(
+      "orbits",
+      memberRemovalEvents.map((e) => e.user_id)
+    );
+  }
 };
 
-module.exports = async (req: VercelRequest, res: VercelResponse) => {
+module.exports = async (
+  req: VercelRequest & { rawBody: string },
+  res: VercelResponse
+) => {
   req.rawBody = JSON.stringify(req.body);
   const webhook = pusher.webhook(req);
 
   if (webhook.isValid()) {
-    const memberRemovalEvents = webhook
-      .getEvents()
-      .filter(
-        (event) =>
-          event.channel === "presence-orbits" && event.name === "member_removed"
+    const memberRemovalEvents = webhook.getEvents().filter((event) => {
+      console.debug(event);
+      return (
+        event.channel === "presence-orbits" && event.name === "member_removed"
       );
+    });
     deleteEvents(memberRemovalEvents)
       .then(() => {
-        res.status(200);
+        res.status(200).end();
       })
       .catch(() => {
-        res.status(500);
+        console.error("failed webhook");
+        res.status(500).end();
       });
   } else {
-    res.status(500);
+    console.error("webhook invalid");
+    res.status(401).end();
   }
 };

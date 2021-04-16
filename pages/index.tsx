@@ -73,6 +73,8 @@ const Orbits = ({ seed }: { seed: Seed }) => {
   const { radius, thetaSpeed, theta, phi, phiSpeed } = seed;
 
   useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+
     groupRef.current.rotation.z = -theta - clock.elapsedTime * thetaSpeed;
     groupRef.current.rotation.y = phi + clock.elapsedTime * phiSpeed;
   });
@@ -133,8 +135,8 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 
     presenceChannel.bind("pusher:member_removed", function (member) {
       setSeeds((seeds) =>
-        seeds.find((s) => s.id === member.id)
-          ? seeds.filter((s) => s.id !== member.id)
+        seeds.find((s) => s.userId === member.id)
+          ? seeds.filter((s) => s.userId !== member.id)
           : seeds
       );
     });
@@ -151,7 +153,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 
     channel.bind("new-neighbor", ({ seed }: { seed: Seed }) => {
       setSeeds((seeds) =>
-        seeds.find((s) => s.id === seed.id) ? seeds : [...seeds, seed]
+        seeds.find((s) => s.userId === seed.userId) ? seeds : [...seeds, seed]
       );
     });
 
@@ -165,7 +167,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
     <>
       <Spiro seeds={seeds} />
       {seeds.map((seed) => (
-        <Orbits key={seed.id} seed={seed} />
+        <Orbits key={seed.userId} seed={seed} />
       ))}
     </>
   );
