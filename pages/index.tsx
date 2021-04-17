@@ -174,7 +174,10 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async () => {
-  const url = process.env.VERCEL_URL ?? "http://localhost:3000";
+  const url = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : "http://localhost:3000";
+
   const res = await fetch(`${url}/api/seeds`);
   const data: { seeds: Array<Seed> } = await res.json();
   return { props: { initialSeeds: data.seeds } };
