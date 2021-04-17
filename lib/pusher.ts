@@ -2,7 +2,7 @@ import Pusher from "pusher";
 
 const {
   APP_ID: appId,
-  KEY: key,
+  NEXT_PUBLIC_PUSHER_KEY: key,
   SECRET: secret,
   NEXT_PUBLIC_PUSHER_CLUSTER: cluster,
 } = process.env;

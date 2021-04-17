@@ -2,7 +2,7 @@ import { Line, OrbitControls, Ring, Sphere } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Leva } from "leva";
 import { sumBy } from "lodash";
-import { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { GetServerSideProps } from "next";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -123,7 +123,8 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
       "presence-orbits"
     ) as PusherTypes.PresenceChannel;
 
-    presenceChannel.bind("pusher:subscription_succeeded", function () {
+    presenceChannel.bind("pusher:subscription_succeeded", () => {
+      console.log("subscribed");
       const userId = presenceChannel.members.me.id;
       const initialSeed = randPosition(userId);
       window.fetch("/api/push", {
@@ -133,7 +134,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
       setSeeds((seeds) => [...seeds, initialSeed]);
     });
 
-    presenceChannel.bind("pusher:member_removed", function (member) {
+    presenceChannel.bind("pusher:member_removed", (member) => {
       setSeeds((seeds) =>
         seeds.find((s) => s.userId === member.id)
           ? seeds.filter((s) => s.userId !== member.id)
@@ -142,8 +143,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
     });
 
     return () => {
-      presenceChannel.unbind("pusher:subscription_succeeded");
-      presenceChannel.unbind("pusher:member_removed");
+      presenceChannel.unbind();
       pusher.unsubscribe("presence-orbits");
     };
   }, []);
@@ -158,14 +158,14 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
     });
 
     return () => {
-      channel.unbind("new-neighbor");
+      channel.unbind();
       pusher.unsubscribe("orbits");
     };
   }, []);
 
   return (
     <>
-      <Spiro seeds={seeds} />
+      {seeds.length > 0 && <Spiro seeds={seeds} />}
       {seeds.map((seed) => (
         <Orbits key={seed.userId} seed={seed} />
       ))}
@@ -174,14 +174,13 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async () => {
-  const res = await fetch(`${process.env.VERCEL_URL}/api/seeds`);
+  const url = process.env.VERCEL_URL ?? "http://localhost:3000";
+  const res = await fetch(`${url}/api/seeds`);
   const data: { seeds: Array<Seed> } = await res.json();
   return { props: { initialSeeds: data.seeds } };
 };
 
-export default function Page({
-  initialSeeds,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Page({ initialSeeds }: { initialSeeds: Array<Seed> }) {
   return (
     <React.StrictMode>
       <style global jsx>{`
