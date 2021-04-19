@@ -104,7 +104,7 @@ const Spiro = ({ seed }: { seed: Seed }) => {
       <Line
         ref={lineRef}
         color={new Color(219, 193, 96)}
-        // @ts-ignore
+        // @ts-ignore --oops
         points={trails.current}
         linewidth={3}
       />
