@@ -1,7 +1,6 @@
 import { Line, OrbitControls, Ring, Sphere } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Leva } from "leva";
-import { sumBy } from "lodash";
 import { GetServerSideProps } from "next";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
@@ -30,24 +29,12 @@ const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
   authEndpoint: "/api/auth",
 });
 
-let trails = new Array(spiroLength * 3).fill(0);
-
-function generateVertices(seeds: Seed[], points: Vector3[], time: number) {
-  seeds.forEach((p, i) =>
-    points[i].setFromSphericalCoords(
-      p.radius,
-      p.theta + time * p.thetaSpeed,
-      p.phi + time * p.phiSpeed
-    )
+const generatePosition = (p: Seed, points: Vector3, time: number) =>
+  points.setFromSphericalCoords(
+    p.radius,
+    p.theta + time * p.thetaSpeed,
+    p.phi + time * p.phiSpeed
   );
-
-  const x = sumBy(points, "x") / points.length;
-  const y = sumBy(points, "y") / points.length;
-  const z = sumBy(points, "z") / points.length;
-
-  trails = [...trails.slice(3), x, y, z];
-  return trails;
-}
 
 const _OrbitRing = ({ seed }: { seed: Seed }) => {
   const ringRef = useRef<Mesh>();
@@ -84,24 +71,26 @@ const Orbits = ({ seed }: { seed: Seed }) => {
       <group ref={groupRef} rotation={[0, phi, 0]}>
         <Sphere args={[0.1]} position={[0, radius, 0]} />
       </group>
+      <Spiro seed={seed} />
     </>
   );
 };
 
-const Spiro = ({ seeds }: { seeds: Array<Seed> }) => {
+const Spiro = ({ seed }: { seed: Seed }) => {
   const lineRef = useRef<Line2>(null);
-
-  const points = useMemo(() => {
-    const a = new Array(seeds.length);
-    for (let i = 0; i < seeds.length; i++) {
-      a[i] = new Vector3();
-    }
-    return a;
-  }, [seeds]);
+  const points = useMemo(() => new Vector3(), []);
+  const trails = useRef<Array<number>>(new Array(spiroLength * 3).fill(0));
 
   useFrame(({ clock }) => {
     const { geometry } = lineRef.current!;
-    geometry.setPositions(generateVertices(seeds, points, clock.elapsedTime));
+    const [x, y, z] = generatePosition(
+      seed,
+      points,
+      clock.elapsedTime
+    ).toArray();
+    const newTrails = [...trails.current.slice(3), x, y, z];
+    geometry.setPositions(newTrails);
+    trails.current = newTrails;
   });
 
   return (
@@ -109,7 +98,7 @@ const Spiro = ({ seeds }: { seeds: Array<Seed> }) => {
       <Line
         ref={lineRef}
         color={new Color(219, 193, 96)}
-        points={trails}
+        points={new Array(spiroLength).fill([0, 0, 0])}
         linewidth={3}
       />
     </group>
@@ -165,7 +154,6 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 
   return (
     <>
-      {seeds.length > 0 && <Spiro seeds={seeds} />}
       {seeds.map((seed) => (
         <Orbits key={seed.userId} seed={seed} />
       ))}
