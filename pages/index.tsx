@@ -5,7 +5,7 @@ import { GetServerSideProps } from "next";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Color, DoubleSide, Group, Mesh, Vector3 } from "three";
+import { DoubleSide, Group, Mesh, Vector3 } from "three";
 import { Line2 } from "three-stdlib";
 import { Seed } from "../lib/seed";
 
@@ -22,6 +22,7 @@ const randPosition = (userId): Seed => ({
   thetaSpeed: rand(1, 1.5),
   phiSpeed: rand(1, 1.5),
   userId,
+  color: "#" + Math.floor(Math.random() * 16777215).toString(16),
 });
 
 const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
@@ -97,7 +98,7 @@ const Spiro = ({ seed }: { seed: Seed }) => {
     <group rotation={[0, Math.PI / 2, 0]}>
       <Line
         ref={lineRef}
-        color={new Color(219, 193, 96)}
+        color={seed.color}
         points={new Array(spiroLength).fill([0, 0, 0])}
         linewidth={3}
       />
