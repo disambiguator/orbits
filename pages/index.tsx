@@ -179,13 +179,9 @@ export default function Page({ initialSeeds }: { initialSeeds: Array<Seed> }) {
         body {
           margin: 0;
         }
-        canvas {
-          display: block;
-          height: 100vh;
-        }
       `}</style>
       <Leva />
-      <div style={{ background: "black" }}>
+      <div style={{ background: "black", height: "100vh" }}>
         <Canvas mode="concurrent">
           <OrbitControls />
           <App initialSeeds={initialSeeds} />
