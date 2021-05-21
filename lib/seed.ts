@@ -1,4 +1,4 @@
-export interface Seed {
+export type Seed = {
   radius: number;
   theta: number;
   phi: number;
@@ -6,4 +6,4 @@ export interface Seed {
   phiSpeed: number;
   userId: string;
   color: string;
-}
+};

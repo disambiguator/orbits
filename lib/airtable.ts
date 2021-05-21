@@ -1,9 +1,9 @@
 const { AIRTABLE_API_KEY, AIRTABLE_BASE } = process.env;
-import Airtable from "airtable";
+import Airtable, { FieldSet } from "airtable";
 
 const base = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(AIRTABLE_BASE);
 
-export const airtablePut = async (table: string, body: unknown) => {
+export const airtablePut = async (table: string, body: FieldSet) => {
   const result = await base(table).create(body);
   console.debug("created ", result.getId());
   return result;
