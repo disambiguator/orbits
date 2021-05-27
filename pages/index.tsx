@@ -1,7 +1,7 @@
 import { Line, OrbitControls, Sphere } from "@react-three/drei";
 import { Text } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Leva } from "leva";
+import { Leva, useControls } from "leva";
 import { GetServerSideProps } from "next";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
@@ -13,9 +13,7 @@ import { useStore } from "../lib/store";
 
 const spiroLength = 300;
 
-function rand(min: number, max: number) {
-  return Math.random() * max + min;
-}
+const rand = (min: number, max: number) => Math.random() * max + min;
 
 const textureHeight = 1000;
 const textureWidth = 1000;
@@ -58,14 +56,18 @@ const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
   authEndpoint: "/api/auth",
 });
 
-const generatePosition = (p: Seed, points: Vector3, time: number) =>
+const generatePosition = (
+  p: Omit<Seed, "userId">,
+  points: Vector3,
+  time: number
+) =>
   points.setFromSphericalCoords(
     p.radius,
     p.theta + time * p.thetaSpeed,
     p.phi + time * p.phiSpeed
   );
 
-const Orbits = ({ seed }: { seed: Seed }) => {
+const Orbits = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   const groupRef = useRef<Group>();
   const { thetaSpeed, theta, phi, phiSpeed, radius, color } = seed;
 
@@ -92,6 +94,23 @@ const Orbits = ({ seed }: { seed: Seed }) => {
       <Spiro seed={seed} />
     </>
   );
+};
+
+const MySeed = ({
+  seed: { radius, theta, phi, thetaSpeed, phiSpeed, color },
+}: {
+  seed: Seed;
+}) => {
+  const seed = useControls({
+    radius: { value: radius, min: 0.1, max: 2 },
+    theta: { value: theta, min: 0, max: 2 * Math.PI },
+    phi: { value: phi, min: 0, max: 2 * Math.PI },
+    thetaSpeed: { value: thetaSpeed, min: 0, max: 0.5 },
+    phiSpeed: { value: phiSpeed, min: 0, max: 0.5 },
+    color,
+  });
+
+  return <Orbits seed={seed} />;
 };
 
 const Background = () => {
@@ -122,7 +141,7 @@ const vecToUV = (vec: Vector3) => {
   return [u, v];
 };
 
-const Spiro = ({ seed }: { seed: Seed }) => {
+const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   const lineRef = useRef<Line2>(null);
   const points = useMemo(
     () =>
@@ -171,6 +190,8 @@ const Spiro = ({ seed }: { seed: Seed }) => {
 
 const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
   const [seeds, setSeeds] = useState(initialSeeds);
+  const [mySeed, setMySeed] = useState<Seed | null>(null);
+
   useEffect(() => {
     const presenceChannel = pusher.subscribe(
       "presence-orbits"
@@ -184,7 +205,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
         method: "POST",
         body: JSON.stringify({ seed: initialSeed }),
       });
-      setSeeds((seeds) => [...seeds, initialSeed]);
+      setMySeed(initialSeed);
     });
 
     presenceChannel.bind("pusher:member_removed", (member) => {
@@ -221,6 +242,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
       {seeds.map((seed) => (
         <Orbits key={seed.userId} seed={seed} />
       ))}
+      {mySeed && <MySeed seed={mySeed} />}
       <Background />
     </>
   );
