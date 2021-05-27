@@ -32,7 +32,14 @@ function drawCoordinates(
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
+  if (x1 > x2) {
+    ctx.lineTo(x2 + textureWidth, y2);
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x1 - textureWidth, y1);
+  } else {
+    ctx.lineTo(x2, y2);
+  }
+
   ctx.stroke();
 }
 
@@ -108,9 +115,20 @@ const Background = () => {
   );
 };
 
+const vecToUV = (vec: Vector3) => {
+  const u = (Math.atan2(vec.x, vec.z) / (2 * Math.PI) + 0.5) * textureWidth;
+  const v = (vec.y * 0.5 + 0.5) * textureHeight;
+
+  return [u, v];
+};
+
 const Spiro = ({ seed }: { seed: Seed }) => {
   const lineRef = useRef<Line2>(null);
-  const points = useMemo(() => new Vector3(), []);
+  const points = useMemo(
+    () =>
+      new Vector3().setFromSphericalCoords(seed.radius, seed.theta, seed.phi),
+    [seed]
+  );
   const trails = useRef<Array<number>>(new Array(spiroLength * 3).fill(0));
   const canvas = useStore((state) => state.canvas);
   const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
@@ -118,9 +136,7 @@ const Spiro = ({ seed }: { seed: Seed }) => {
   useFrame(({ clock }) => {
     const { geometry } = lineRef.current!;
 
-    const u1 =
-      (Math.atan2(points.x, points.z) / (2 * Math.PI) + 0.5) * textureWidth;
-    const v1 = (points.y * 0.5 + 0.5) * textureHeight;
+    const [u1, v1] = vecToUV(points);
 
     generatePosition(seed, points, clock.elapsedTime);
     const newTrails = [
@@ -131,9 +147,7 @@ const Spiro = ({ seed }: { seed: Seed }) => {
     ];
 
     points.normalize();
-    const u2 =
-      (Math.atan2(points.x, points.z) / (2 * Math.PI) + 0.5) * textureWidth;
-    const v2 = (points.y * 0.5 + 0.5) * textureHeight;
+    const [u2, v2] = vecToUV(points);
 
     drawCoordinates(canvasContext, u1, v1, u2, v2, seed.color);
 
@@ -262,7 +276,7 @@ export default function Page({ initialSeeds }: { initialSeeds: Array<Seed> }) {
         ref={canvasRef}
         height={textureHeight}
         width={textureWidth}
-        // style={{ position: "absolute", left: 0, top: 0 }}
+        // style={{ position: "absolute", left: 0, top: 0, zIndex: 1 }}
       />
     </React.StrictMode>
   );
