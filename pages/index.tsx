@@ -129,7 +129,9 @@ const Spiro = ({ seed }: { seed: Seed }) => {
       new Vector3().setFromSphericalCoords(seed.radius, seed.theta, seed.phi),
     [seed]
   );
-  const trails = useRef<Array<number>>(new Array(spiroLength * 3).fill(0));
+  const trails = useRef<Array<number>>(
+    new Array(spiroLength).fill(points.toArray()).flat()
+  );
   const canvas = useStore((state) => state.canvas);
   const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
 
@@ -160,7 +162,7 @@ const Spiro = ({ seed }: { seed: Seed }) => {
       <Line
         ref={lineRef}
         color={seed.color}
-        points={new Array(spiroLength).fill([0, 0, 0])}
+        points={new Array(spiroLength).fill(points.toArray())}
         linewidth={3}
       />
     </group>
