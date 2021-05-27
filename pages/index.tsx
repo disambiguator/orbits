@@ -24,11 +24,35 @@ function drawCoordinates(
   y1: number,
   x2: number,
   y2: number,
+  [xA, yA]: [boolean, boolean],
   color: string
 ) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.beginPath();
+
+  // ctx.moveTo(x1, y1);
+  // if (x1 > x2 !== xA && y1 > y2 !== yA) {
+  //   ctx.lineTo(
+  //     x2 + textureWidth * (xA ? 1 : -1),
+  //     y2 + textureWidth * (yA ? 1 : -1)
+  //   );
+  //   ctx.moveTo(x2, y2);
+  //   ctx.lineTo(
+  //     x1 - textureWidth * (xA ? 1 : -1),
+  //     y1 - textureWidth * (yA ? 1 : -1)
+  //   );
+  // } else if (x1 > x2 !== xA) {
+  //   ctx.lineTo(x2 + textureWidth * (xA ? 1 : -1), y2);
+  //   ctx.moveTo(x2, y2);
+  //   ctx.lineTo(x1 - textureWidth * (xA ? 1 : -1), y1);
+  // } else if (y1 > y2 !== yA) {
+  //   ctx.lineTo(x2, y2 + textureWidth * (yA ? 1 : -1));
+  //   ctx.moveTo(x2, y2);
+  //   ctx.lineTo(x1, y1 - textureWidth * (yA ? 1 : -1));
+  // } else {
+  // ctx.lineTo(x2, y2);
+  // }
   ctx.moveTo(x1, y1);
   if (x1 > x2) {
     ctx.lineTo(x2 + textureWidth, y2);
@@ -45,8 +69,8 @@ const randPosition = (userId): Seed => ({
   radius: rand(0.1, 2),
   theta: rand(0, 2 * Math.PI),
   phi: rand(0, 2 * Math.PI),
-  thetaSpeed: rand(0, 0.5),
-  phiSpeed: rand(0, 0.5),
+  thetaSpeed: rand(0, 0.1) + 1,
+  phiSpeed: rand(0, 0.1) + 1,
   userId,
   color: "#" + Math.floor(Math.random() * 16777215).toString(16),
 });
@@ -60,12 +84,17 @@ const generatePosition = (
   p: Omit<Seed, "userId">,
   points: Vector3,
   time: number
-) =>
-  points.setFromSphericalCoords(
+) => {
+  // console.log(
+  //   (p.theta + time * p.thetaSpeed) / Math.PI,
+  //   (p.phi + time * p.phiSpeed) / Math.PI
+  // );
+  return points.setFromSphericalCoords(
     p.radius,
     p.theta + time * p.thetaSpeed,
     p.phi + time * p.phiSpeed
   );
+};
 
 const Orbits = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   const groupRef = useRef<Group>();
@@ -153,6 +182,47 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   );
   const canvas = useStore((state) => state.canvas);
   const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
+  const angle: [boolean, boolean] = useMemo(() => {
+    const beep = new Vector3().setFromSphericalCoords(
+      seed.radius,
+      seed.theta,
+      seed.phi
+    );
+    beep.normalize();
+
+    const [u1, v1] = vecToUV(beep);
+
+    generatePosition(seed, beep, 0.0001);
+    beep.normalize();
+
+    const [u2, v2] = vecToUV(beep);
+
+    return [u2 < u1, v2 < v1];
+  }, [seed]);
+
+  useEffect(() => {
+    const p = {
+      radius: 2,
+      theta: 0,
+      phi: 0,
+      thetaSpeed: Math.PI * 3,
+      phiSpeed: 0.06,
+      userId: "1",
+      color: "#" + Math.floor(Math.random() * 16777215).toString(16),
+    };
+
+    const time = [0, 1, 2, 3];
+    const timeVector = new Vector3();
+    time.forEach((t) => {
+      const a = timeVector.clone();
+      timeVector.setFromSphericalCoords(
+        p.radius,
+        p.theta + t * p.thetaSpeed,
+        p.phi + t * p.phiSpeed
+      );
+      console.log(timeVector.x - a.x, timeVector.y - a.y, timeVector.z - a.z);
+    });
+  }, []);
 
   useFrame(({ clock }) => {
     const { geometry } = lineRef.current!;
@@ -160,6 +230,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
     const [u1, v1] = vecToUV(points);
 
     generatePosition(seed, points, clock.elapsedTime);
+
     const newTrails = [
       ...trails.current.slice(3),
       points.x,
@@ -170,7 +241,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
     points.normalize();
     const [u2, v2] = vecToUV(points);
 
-    drawCoordinates(canvasContext, u1, v1, u2, v2, seed.color);
+    drawCoordinates(canvasContext, u1, v1, u2, v2, angle, seed.color);
 
     geometry.setPositions(newTrails);
     trails.current = newTrails;
@@ -239,7 +310,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
 
   return (
     <>
-      {seeds.map((seed) => (
+      {seeds.slice(0, 1).map((seed) => (
         <Orbits key={seed.userId} seed={seed} />
       ))}
       {mySeed && <MySeed seed={mySeed} />}
@@ -248,25 +319,21 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
   );
 };
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  const url =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
-
-  console.log(process.env.NEXT_PUBLIC_VERCEL_URL);
-
-  const res = await fetch(`${url}/api/seeds`);
-  const data: { seeds: Array<Seed> } = await res.json();
-  return { props: { initialSeeds: data.seeds } };
-};
-
-export default function Page({ initialSeeds }: { initialSeeds: Array<Seed> }) {
+export default function Page({
+  initialSeeds = [],
+}: {
+  initialSeeds: Array<Seed>;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>();
   const { set } = useStore();
 
   useEffect(() => {
     set({ canvas: canvasRef.current });
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath();
+    ctx.rect(0, 0, textureWidth, textureHeight);
+    ctx.stroke();
+    ctx.fill();
   }, [set]);
 
   // useEffect(() => {
