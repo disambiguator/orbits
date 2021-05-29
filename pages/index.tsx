@@ -11,23 +11,35 @@ import { Line2 } from "three-stdlib";
 import { Seed } from "../lib/seed";
 import { useStore } from "../lib/store";
 
-const spiroLength = 300;
+const TRAIL_LENGTH = 300;
+const RADIUS_MIN = 1;
+const RADIUS_MAX = 10;
+const STROKE_MIN = 1;
+const STROKE_MAX = 10;
 
 const rand = (min: number, max: number) => Math.random() * max + min;
 
 const textureHeight = 1000;
 const textureWidth = 1000;
 
+type Coords = [number, number];
+
+const scale = (value: number, r1: [number, number], r2: [number, number]) => {
+  return ((value - r1[0]) * (r2[1] - r2[0])) / (r1[1] - r1[0]) + r2[0];
+};
+
 function drawCoordinates(
   ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  color: string
+  [x1, y1]: Coords,
+  [x2, y2]: Coords,
+  seed: Omit<Seed, "userId">
 ) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = seed.color;
+  ctx.lineWidth = scale(
+    seed.radius,
+    [RADIUS_MIN, RADIUS_MAX],
+    [STROKE_MIN, STROKE_MAX]
+  );
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   if (x1 > x2) {
@@ -41,8 +53,8 @@ function drawCoordinates(
   ctx.stroke();
 }
 
-const randPosition = (userId): Seed => ({
-  radius: rand(0.1, 2),
+const randPosition = (userId: any): Seed => ({
+  radius: rand(RADIUS_MIN, RADIUS_MAX),
   theta: rand(0, 2 * Math.PI),
   phi: rand(0, 2 * Math.PI),
   thetaSpeed: rand(0, 0.5),
@@ -89,7 +101,9 @@ const Orbits = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
         >
           A name
         </Text>
-        <Sphere args={[0.1]} position={[0, radius, 0]} />
+        <Sphere args={[0.1, 20, 20]} position={[0, radius, 0]}>
+          <meshBasicMaterial color={seed.color} />
+        </Sphere>
       </group>
       <Spiro seed={seed} />
     </>
@@ -102,7 +116,7 @@ const MySeed = ({
   seed: Seed;
 }) => {
   const seed = useControls({
-    radius: { value: radius, min: 0.1, max: 2 },
+    radius: { value: radius, min: RADIUS_MIN, max: RADIUS_MAX },
     theta: { value: theta, min: 0, max: 2 * Math.PI },
     phi: { value: phi, min: 0, max: 2 * Math.PI },
     thetaSpeed: { value: thetaSpeed, min: 0, max: 0.5 },
@@ -124,6 +138,9 @@ const Background = () => {
   }, [canvas]);
 
   useFrame(() => {
+    // const context = canvas.getContext("2d");
+    // context.fillStyle = "rgba(0, 0, 0, 0.01)";
+    // context.fillRect(0, 0, textureWidth, textureHeight);
     materialRef.current.map.needsUpdate = true;
   });
 
@@ -134,7 +151,7 @@ const Background = () => {
   );
 };
 
-const vecToUV = (vec: Vector3) => {
+const vecToUV = (vec: Vector3): [number, number] => {
   const u = (Math.atan2(vec.x, vec.z) / (2 * Math.PI) + 0.5) * textureWidth;
   const v = (vec.y * 0.5 + 0.5) * textureHeight;
 
@@ -149,7 +166,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
     [seed]
   );
   const trails = useRef<Array<number>>(
-    new Array(spiroLength).fill(points.toArray()).flat()
+    new Array(TRAIL_LENGTH).fill(points.toArray()).flat()
   );
   const canvas = useStore((state) => state.canvas);
   const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
@@ -157,7 +174,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   useFrame(({ clock }) => {
     const { geometry } = lineRef.current!;
 
-    const [u1, v1] = vecToUV(points);
+    const oldCoords = vecToUV(points);
 
     generatePosition(seed, points, clock.elapsedTime);
     const newTrails = [
@@ -168,9 +185,9 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
     ];
 
     points.normalize();
-    const [u2, v2] = vecToUV(points);
+    const newCoords = vecToUV(points);
 
-    drawCoordinates(canvasContext, u1, v1, u2, v2, seed.color);
+    drawCoordinates(canvasContext, oldCoords, newCoords, seed);
 
     geometry.setPositions(newTrails);
     trails.current = newTrails;
@@ -181,7 +198,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
       <Line
         ref={lineRef}
         color={seed.color}
-        points={new Array(spiroLength).fill(points.toArray())}
+        points={new Array(TRAIL_LENGTH).fill(points.toArray())}
         linewidth={3}
       />
     </group>
@@ -208,7 +225,8 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
       setMySeed(initialSeed);
     });
 
-    presenceChannel.bind("pusher:member_removed", (member) => {
+    presenceChannel.bind("pusher:member_removed", (member: { id: string }) => {
+      console.log("member_removed");
       setSeeds((seeds) =>
         seeds.find((s) => s.userId === member.id)
           ? seeds.filter((s) => s.userId !== member.id)
