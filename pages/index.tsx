@@ -1,6 +1,6 @@
 import { Line, OrbitControls, Sphere } from "@react-three/drei";
 import { Text } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Leva, useControls } from "leva";
 import { GetServerSideProps } from "next";
 import Pusher from "pusher-js";
@@ -8,36 +8,35 @@ import * as PusherTypes from "pusher-js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CanvasTexture, FrontSide, Group, Vector3 } from "three";
 import { Line2 } from "three-stdlib";
-import { Seed } from "../lib/seed";
+import consts from "../lib/consts";
+import { Seed, randSeed } from "../lib/seed";
 import { useStore } from "../lib/store";
+import styles from "./index.module.scss";
 
-const TRAIL_LENGTH = 300;
-const RADIUS_MIN = 1;
-const RADIUS_MAX = 10;
+const TRAIL_LENGTH = 10000;
 const STROKE_MIN = 1;
 const STROKE_MAX = 10;
-
-const rand = (min: number, max: number) => Math.random() * max + min;
 
 const textureHeight = 1000;
 const textureWidth = 1000;
 
+type SeedWithUser = Seed & { userId: string };
+
 type Coords = [number, number];
 
-const scale = (value: number, r1: [number, number], r2: [number, number]) => {
-  return ((value - r1[0]) * (r2[1] - r2[0])) / (r1[1] - r1[0]) + r2[0];
-};
+const scale = (value: number, r1: [number, number], r2: [number, number]) =>
+  ((value - r1[0]) * (r2[1] - r2[0])) / (r1[1] - r1[0]) + r2[0];
 
 function drawCoordinates(
   ctx: CanvasRenderingContext2D,
   [x1, y1]: Coords,
   [x2, y2]: Coords,
-  seed: Omit<Seed, "userId">
+  seed: Seed
 ) {
   ctx.strokeStyle = seed.color;
   ctx.lineWidth = scale(
     seed.radius,
-    [RADIUS_MIN, RADIUS_MAX],
+    [consts.RADIUS_MIN, consts.RADIUS_MAX],
     [STROKE_MIN, STROKE_MAX]
   );
   ctx.beginPath();
@@ -53,26 +52,12 @@ function drawCoordinates(
   ctx.stroke();
 }
 
-const randPosition = (userId: any): Seed => ({
-  radius: rand(RADIUS_MIN, RADIUS_MAX),
-  theta: rand(0, 2 * Math.PI),
-  phi: rand(0, 2 * Math.PI),
-  thetaSpeed: rand(0, 0.5),
-  phiSpeed: rand(0, 0.5),
-  userId,
-  color: "#" + Math.floor(Math.random() * 16777215).toString(16),
-});
-
 const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
   cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
   authEndpoint: "/api/auth",
 });
 
-const generatePosition = (
-  p: Omit<Seed, "userId">,
-  points: Vector3,
-  time: number
-) =>
+const generatePosition = (p: Seed, points: Vector3, time: number) =>
   points.setFromSphericalCoords(
     p.radius,
     p.theta + time * p.thetaSpeed,
@@ -116,15 +101,13 @@ const MySeed = ({
   seed: Seed;
 }) => {
   const seed = useControls({
-    radius: { value: radius, min: RADIUS_MIN, max: RADIUS_MAX },
-    theta: { value: theta, min: 0, max: 2 * Math.PI },
-    phi: { value: phi, min: 0, max: 2 * Math.PI },
+    radius: { value: radius, min: consts.RADIUS_MIN, max: consts.RADIUS_MAX },
     thetaSpeed: { value: thetaSpeed, min: 0, max: 0.5 },
     phiSpeed: { value: phiSpeed, min: 0, max: 0.5 },
     color,
   });
 
-  return <Orbits seed={seed} />;
+  return <Orbits seed={{ ...seed, theta, phi }} />;
 };
 
 const Background = () => {
@@ -141,7 +124,7 @@ const Background = () => {
     // const context = canvas.getContext("2d");
     // context.fillStyle = "rgba(0, 0, 0, 0.01)";
     // context.fillRect(0, 0, textureWidth, textureHeight);
-    materialRef.current.map.needsUpdate = true;
+    if (materialRef.current.map) materialRef.current.map.needsUpdate = true;
   });
 
   return (
@@ -170,6 +153,24 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   );
   const canvas = useStore((state) => state.canvas);
   const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
+  const clock = useThree((three) => three.clock);
+
+  useEffect(() => {
+    console.log("regen trail");
+    const newTrails = [];
+    for (let i = 0; i < TRAIL_LENGTH; i++) {
+      generatePosition(
+        seed,
+        points,
+        clock.elapsedTime - (TRAIL_LENGTH - i) / 60
+      );
+
+      newTrails[i * 3] = points.x;
+      newTrails[i * 3 + 1] = points.y;
+      newTrails[i * 3 + 2] = points.z;
+    }
+    trails.current = newTrails;
+  }, [seed, points, clock]);
 
   useFrame(({ clock }) => {
     const { geometry } = lineRef.current!;
@@ -205,9 +206,8 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   );
 };
 
-const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
+const App = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   const [seeds, setSeeds] = useState(initialSeeds);
-  const [mySeed, setMySeed] = useState<Seed | null>(null);
 
   useEffect(() => {
     const presenceChannel = pusher.subscribe(
@@ -217,12 +217,11 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
     presenceChannel.bind("pusher:subscription_succeeded", () => {
       console.log("subscribed");
       const userId = presenceChannel.members.me.id;
-      const initialSeed = randPosition(userId);
+      const initialSeed = { ...randSeed(), userId };
       window.fetch("/api/push", {
         method: "POST",
         body: JSON.stringify({ seed: initialSeed }),
       });
-      setMySeed(initialSeed);
     });
 
     presenceChannel.bind("pusher:member_removed", (member: { id: string }) => {
@@ -243,7 +242,7 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
   useEffect(() => {
     const channel = pusher.subscribe("orbits");
 
-    channel.bind("new-neighbor", ({ seed }: { seed: Seed }) => {
+    channel.bind("new-neighbor", ({ seed }: { seed: SeedWithUser }) => {
       setSeeds((seeds) =>
         seeds.find((s) => s.userId === seed.userId) ? seeds : [...seeds, seed]
       );
@@ -260,9 +259,18 @@ const App = ({ initialSeeds }: { initialSeeds: Seed[] }) => {
       {seeds.map((seed) => (
         <Orbits key={seed.userId} seed={seed} />
       ))}
-      {mySeed && <MySeed seed={mySeed} />}
       <Background />
     </>
+  );
+};
+
+const Intro = () => {
+  const set = useStore((store) => store.set);
+  return (
+    <div>
+      <h1>Design your orbit!</h1>
+      <button onClick={() => set({ mode: "viewing" })}>Done</button>
+    </div>
   );
 };
 
@@ -275,13 +283,17 @@ export const getServerSideProps: GetServerSideProps = async () => {
   console.log(process.env.NEXT_PUBLIC_VERCEL_URL);
 
   const res = await fetch(`${url}/api/seeds`);
-  const data: { seeds: Array<Seed> } = await res.json();
+  const data: { seeds: Array<SeedWithUser> } = await res.json();
   return { props: { initialSeeds: data.seeds } };
 };
 
-export default function Page({ initialSeeds }: { initialSeeds: Array<Seed> }) {
+export default function Page({
+  initialSeeds,
+}: {
+  initialSeeds: Array<SeedWithUser>;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>();
-  const { set } = useStore();
+  const { set, mode, mySeed } = useStore();
 
   useEffect(() => {
     set({ canvas: canvasRef.current });
@@ -308,10 +320,15 @@ export default function Page({ initialSeeds }: { initialSeeds: Array<Seed> }) {
         }
       `}</style>
       <Leva />
-      <div style={{ background: "black", height: "100vh" }}>
+      <div className={styles.container}>
+        {mode === "design" ? <Intro /> : null}
         <Canvas mode="concurrent">
           <OrbitControls />
-          <App initialSeeds={initialSeeds} />
+          {mode === "design" ? (
+            <MySeed seed={mySeed} />
+          ) : (
+            <App initialSeeds={initialSeeds} />
+          )}
         </Canvas>
       </div>
       <canvas
