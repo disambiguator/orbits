@@ -335,6 +335,7 @@ export default function Page({
         ref={canvasRef}
         height={textureHeight}
         width={textureWidth}
+        style={{ display: "none" }}
         // style={{ position: "absolute", left: 0, top: 0, zIndex: 1 }}
       />
     </React.StrictMode>
