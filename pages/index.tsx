@@ -66,9 +66,9 @@ const generatePosition = (p: Seed, points: Vector3, time: number) =>
     p.phi + time * p.phiSpeed
   );
 
-const Orbits = ({ seed, trailLength }: { seed: Seed; trailLength: number }) => {
+const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   const groupRef = useRef<Group>();
-  const { thetaSpeed, theta, phi, phiSpeed, radius, color } = seed;
+  const { thetaSpeed, theta, phi, phiSpeed, radius, color } = props.seed;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -89,10 +89,10 @@ const Orbits = ({ seed, trailLength }: { seed: Seed; trailLength: number }) => {
           A name
         </Text>
         <Sphere args={[0.1, 20, 20]} position={[0, radius, 0]}>
-          <meshBasicMaterial color={seed.color} />
+          <meshBasicMaterial color={color} />
         </Sphere>
       </group>
-      <Spiro seed={seed} trailLength={trailLength} />
+      <Spiro {...props} />
     </>
   );
 };
@@ -110,7 +110,11 @@ const MySeed = ({
   });
 
   return (
-    <Orbits seed={{ ...seed, theta, phi }} trailLength={INTRO_TRAIL_LENGTH} />
+    <Orbits
+      seed={{ ...seed, theta, phi }}
+      trailLength={INTRO_TRAIL_LENGTH}
+      draw={false}
+    />
   );
 };
 
@@ -145,7 +149,15 @@ const vecToUV = (vec: Vector3): [number, number] => {
   return [u, v];
 };
 
-const Spiro = ({ seed, trailLength }: { seed: Seed; trailLength: number }) => {
+const Spiro = ({
+  seed,
+  trailLength,
+  draw,
+}: {
+  seed: Seed;
+  trailLength: number;
+  draw: boolean;
+}) => {
   const lineRef = useRef<Line2>(null);
   const points = useMemo(
     () =>
@@ -192,7 +204,7 @@ const Spiro = ({ seed, trailLength }: { seed: Seed; trailLength: number }) => {
     points.normalize();
     const newCoords = vecToUV(points);
 
-    drawCoordinates(canvasContext, oldCoords, newCoords, seed);
+    if (draw) drawCoordinates(canvasContext, oldCoords, newCoords, seed);
 
     geometry.setPositions(newTrails);
     trails.current = newTrails;
@@ -261,7 +273,7 @@ const App = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   return (
     <>
       {seeds.map((seed) => (
-        <Orbits key={seed.userId} seed={seed} trailLength={TRAIL_LENGTH} />
+        <Orbits key={seed.userId} seed={seed} trailLength={TRAIL_LENGTH} draw />
       ))}
       <Background />
     </>
