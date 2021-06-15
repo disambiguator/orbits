@@ -5,6 +5,7 @@ import { Leva, useControls } from "leva";
 import { GetServerSideProps } from "next";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
+import { Perf } from "r3f-perf";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CanvasTexture, FrontSide, Group, Vector3 } from "three";
 import { Line2 } from "three-stdlib";
@@ -13,7 +14,8 @@ import { Seed, randSeed } from "../lib/seed";
 import { useStore } from "../lib/store";
 import styles from "./index.module.scss";
 
-const TRAIL_LENGTH = 10000;
+const TRAIL_LENGTH = 300;
+const INTRO_TRAIL_LENGTH = 10000;
 const STROKE_MIN = 1;
 const STROKE_MAX = 10;
 
@@ -64,7 +66,7 @@ const generatePosition = (p: Seed, points: Vector3, time: number) =>
     p.phi + time * p.phiSpeed
   );
 
-const Orbits = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
+const Orbits = ({ seed, trailLength }: { seed: Seed; trailLength: number }) => {
   const groupRef = useRef<Group>();
   const { thetaSpeed, theta, phi, phiSpeed, radius, color } = seed;
 
@@ -90,7 +92,7 @@ const Orbits = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
           <meshBasicMaterial color={seed.color} />
         </Sphere>
       </group>
-      <Spiro seed={seed} />
+      <Spiro seed={seed} trailLength={trailLength} />
     </>
   );
 };
@@ -107,7 +109,9 @@ const MySeed = ({
     color,
   });
 
-  return <Orbits seed={{ ...seed, theta, phi }} />;
+  return (
+    <Orbits seed={{ ...seed, theta, phi }} trailLength={INTRO_TRAIL_LENGTH} />
+  );
 };
 
 const Background = () => {
@@ -141,7 +145,7 @@ const vecToUV = (vec: Vector3): [number, number] => {
   return [u, v];
 };
 
-const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
+const Spiro = ({ seed, trailLength }: { seed: Seed; trailLength: number }) => {
   const lineRef = useRef<Line2>(null);
   const points = useMemo(
     () =>
@@ -149,7 +153,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
     [seed]
   );
   const trails = useRef<Array<number>>(
-    new Array(TRAIL_LENGTH).fill(points.toArray()).flat()
+    new Array(trailLength).fill(points.toArray()).flat()
   );
   const canvas = useStore((state) => state.canvas);
   const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
@@ -158,11 +162,11 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
   useEffect(() => {
     console.log("regen trail");
     const newTrails = [];
-    for (let i = 0; i < TRAIL_LENGTH; i++) {
+    for (let i = 0; i < trailLength; i++) {
       generatePosition(
         seed,
         points,
-        clock.elapsedTime - (TRAIL_LENGTH - i) / 60
+        clock.elapsedTime - (trailLength - i) / 60
       );
 
       newTrails[i * 3] = points.x;
@@ -199,7 +203,7 @@ const Spiro = ({ seed }: { seed: Omit<Seed, "userId"> }) => {
       <Line
         ref={lineRef}
         color={seed.color}
-        points={new Array(TRAIL_LENGTH).fill(points.toArray())}
+        points={new Array(trailLength).fill(points.toArray())}
         linewidth={3}
       />
     </group>
@@ -257,7 +261,7 @@ const App = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   return (
     <>
       {seeds.map((seed) => (
-        <Orbits key={seed.userId} seed={seed} />
+        <Orbits key={seed.userId} seed={seed} trailLength={TRAIL_LENGTH} />
       ))}
       <Background />
     </>
@@ -324,6 +328,7 @@ export default function Page({
         {mode === "design" ? <Intro /> : null}
         <Canvas mode="concurrent">
           <OrbitControls />
+          <Perf />
           {mode === "design" ? (
             <MySeed seed={mySeed} />
           ) : (
