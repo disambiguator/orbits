@@ -3,7 +3,10 @@ import { airtablePut } from "../lib/airtable";
 import pusher from "../lib/pusher";
 import { Seed } from "../lib/seed";
 
-const addToOrbits = (seed: Seed) => airtablePut("orbits", seed);
+const addToOrbits = ({ chord, ...rest }: Seed) => {
+  const serializedSeed = { ...rest, chord: chord.join(",") };
+  return airtablePut("orbits", serializedSeed);
+};
 
 const broadcastNeighbor = (seed: Seed) =>
   Promise.all([

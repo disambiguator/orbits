@@ -7,10 +7,17 @@ import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
 import { Perf } from "r3f-perf";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { CanvasTexture, FrontSide, Group, Vector3 } from "three";
+import {
+  AudioListener,
+  CanvasTexture,
+  FrontSide,
+  Group,
+  PositionalAudio,
+  Vector3,
+} from "three";
 import { Line2 } from "three-stdlib";
 import consts from "../lib/consts";
-import { Seed, randSeed } from "../lib/seed";
+import { Seed, SeedWithUser, randSeed } from "../lib/seed";
 import { useStore } from "../lib/store";
 import styles from "./index.module.scss";
 
@@ -21,8 +28,6 @@ const STROKE_MAX = 10;
 
 const textureHeight = 1000;
 const textureWidth = 1000;
-
-type SeedWithUser = Seed & { userId: string };
 
 type Coords = [number, number];
 
@@ -68,7 +73,7 @@ const generatePosition = (p: Seed, points: Vector3, time: number) =>
 
 const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   const groupRef = useRef<Group>();
-  const { thetaSpeed, theta, phi, phiSpeed, radius, color } = props.seed;
+  const { thetaSpeed, theta, phi, phiSpeed, radius, color, chord } = props.seed;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
@@ -77,6 +82,11 @@ const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
     groupRef.current.rotation.y = phi + clock.elapsedTime * phiSpeed;
   });
 
+  // const { a, b, c } = useControls({
+  //   a: { value: 144, min: 100, max: 1000 },
+  //   b: { value: 144, min: 100, max: 1000 },
+  //   c: { value: 144, min: 100, max: 1000 },
+  // });
   return (
     <>
       <group ref={groupRef} rotation={[0, phi, 0]}>
@@ -91,14 +101,64 @@ const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
         <Sphere args={[0.1, 20, 20]} position={[0, radius, 0]}>
           <meshBasicMaterial color={color} />
         </Sphere>
+        {chord.map((f, i) => (
+          <Tone key={i} freq={f} position={[0, radius, 0]} />
+        ))}
       </group>
       <Spiro {...props} />
     </>
   );
 };
 
+const Tone = ({
+  freq,
+  position,
+}: {
+  freq: number;
+  position: [number, number, number];
+}) => {
+  const { camera, clock } = useThree();
+  const [audio, setAudio] = useState<PositionalAudio>(null);
+
+  const listener = useMemo(() => new AudioListener(), []);
+
+  useEffect(() => {
+    camera.add(listener);
+
+    return () => {
+      camera.remove(listener);
+    };
+  }, [camera, listener]);
+
+  useEffect(() => {
+    if (audio) {
+      const oscillator = listener.context.createOscillator();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(freq, clock.elapsedTime);
+
+      oscillator.start(0);
+
+      //@ts-ignore
+      audio.setNodeSource(oscillator);
+      audio.setRefDistance(1);
+      audio.setVolume(0.3);
+      audio.setRolloffFactor(15);
+
+      return () => {
+        oscillator.stop();
+      };
+    }
+  }, [listener, clock, audio, freq]);
+
+  return (
+    <>
+      <positionalAudio position={position} ref={setAudio} args={[listener]} />
+    </>
+  );
+};
+
 const MySeed = ({
-  seed: { radius, theta, phi, thetaSpeed, phiSpeed, color },
+  seed: { radius, thetaSpeed, phiSpeed, color, ...rest },
 }: {
   seed: Seed;
 }) => {
@@ -111,7 +171,7 @@ const MySeed = ({
 
   return (
     <Orbits
-      seed={{ ...seed, theta, phi }}
+      seed={{ ...seed, ...rest }}
       trailLength={INTRO_TRAIL_LENGTH}
       draw={false}
     />
@@ -149,7 +209,7 @@ const vecToUV = (vec: Vector3): [number, number] => {
   return [u, v];
 };
 
-const Spiro = ({
+const Spiro = React.memo(function Spiro({
   seed,
   trailLength,
   draw,
@@ -157,7 +217,7 @@ const Spiro = ({
   seed: Seed;
   trailLength: number;
   draw: boolean;
-}) => {
+}) {
   const lineRef = useRef<Line2>(null);
   const points = useMemo(
     () =>
@@ -186,7 +246,7 @@ const Spiro = ({
       newTrails[i * 3 + 2] = points.z;
     }
     trails.current = newTrails;
-  }, [seed, points, clock]);
+  }, [seed, points, trailLength, clock]);
 
   useFrame(({ clock }) => {
     const { geometry } = lineRef.current!;
@@ -220,7 +280,7 @@ const Spiro = ({
       />
     </group>
   );
-};
+});
 
 const App = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   const [seeds, setSeeds] = useState(initialSeeds);
