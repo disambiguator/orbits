@@ -6,13 +6,7 @@ import Link from "next/link";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
 import { Perf } from "r3f-perf";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioListener,
   CanvasTexture,
@@ -351,7 +345,7 @@ const Main = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   );
 };
 
-const Intro = ({ setViewing }: { setViewing: () => void }) => {
+const Intro = () => {
   return (
     <div>
       <h1>Design your orbit!</h1>
@@ -364,17 +358,13 @@ const Intro = ({ setViewing }: { setViewing: () => void }) => {
 
 export default function App({
   initialSeeds,
-  mode: initialMode = "design",
+  mode,
 }: {
   initialSeeds?: Array<SeedWithUser>;
   mode?: "design" | "viewing";
 }) {
   const canvasRef = useRef<HTMLCanvasElement>();
   const { set, mySeed } = useStore();
-  const [mode, setMode] = useState(initialMode);
-  const setViewing = useCallback(() => {
-    setMode("viewing");
-  }, []);
   useEffect(() => {
     set({ canvas: canvasRef.current });
   }, [set]);
@@ -401,7 +391,7 @@ export default function App({
       `}</style>
       <Leva />
       <div className={styles.container}>
-        {mode === "design" ? <Intro setViewing={setViewing} /> : null}
+        {mode === "design" ? <Intro /> : null}
         <Canvas mode="concurrent">
           <OrbitControls />
           <Perf />
