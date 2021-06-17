@@ -9,8 +9,6 @@ export const getServerSideProps: GetServerSideProps = async () => {
       ? "http://localhost:3000"
       : `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
 
-  console.log(process.env.NEXT_PUBLIC_VERCEL_URL);
-
   const res = await fetch(`${url}/api/seeds`);
   const data: { seeds: Array<SeedWithUser> } = await res.json();
   return { props: { initialSeeds: data.seeds } };
@@ -21,5 +19,5 @@ export default function Page({
 }: {
   initialSeeds: Array<SeedWithUser>;
 }) {
-  return <App initialSeeds={initialSeeds} mode="design" />;
+  return <App initialSeeds={initialSeeds} mode="viewing" />;
 }

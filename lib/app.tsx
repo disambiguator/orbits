@@ -2,6 +2,7 @@ import { Line, OrbitControls, Sphere } from "@react-three/drei";
 import { Text } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Leva, useControls } from "leva";
+import Link from "next/link";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
 import { Perf } from "r3f-perf";
@@ -289,6 +290,11 @@ const Spiro = React.memo(function Spiro({
 
 const Main = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   const [seeds, setSeeds] = useState(initialSeeds);
+  //   useEffect(() => {
+  //     if (!initialSeeds) {
+  //       return;
+  //     }
+  //   }, []);
 
   useEffect(() => {
     const presenceChannel = pusher.subscribe(
@@ -349,7 +355,9 @@ const Intro = ({ setViewing }: { setViewing: () => void }) => {
   return (
     <div>
       <h1>Design your orbit!</h1>
-      <button onClick={setViewing}>Done</button>
+      <button>
+        <Link href="/">Done</Link>
+      </button>
     </div>
   );
 };
