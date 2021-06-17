@@ -1,11 +1,11 @@
-import { Line, OrbitControls, Sphere } from "@react-three/drei";
+import { Line, Sphere } from "@react-three/drei";
 import { Text } from "@react-three/drei";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { Leva, useControls } from "leva";
+import { flow } from "lodash";
 import Link from "next/link";
 import Pusher from "pusher-js";
 import * as PusherTypes from "pusher-js";
-import { Perf } from "r3f-perf";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioListener,
@@ -20,6 +20,7 @@ import consts from "../lib/consts";
 import { Seed, SeedWithUser, randSeed } from "../lib/seed";
 import { useStore } from "../lib/store";
 import styles from "./app.module.scss";
+import { FiberScene } from "./scene";
 
 const TRAIL_LENGTH = 300;
 const INTRO_TRAIL_LENGTH = 10000;
@@ -347,8 +348,13 @@ const Main = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
 
 const Intro = () => {
   return (
-    <div>
-      <h1>Design your orbit!</h1>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+      }}
+    >
+      <h2>Design your orbit!</h2>
       <button>
         <Link href="/">Done</Link>
       </button>
@@ -389,17 +395,15 @@ export default function App({
           margin: 0;
         }
       `}</style>
-      <Leva />
       <div className={styles.container}>
         {mode === "design" ? <Intro /> : null}
-        <Canvas mode="concurrent">
-          <OrbitControls />
+        <FiberScene controls gui>
           {mode === "design" ? (
             <MySeed seed={mySeed} />
           ) : (
             <Main initialSeeds={initialSeeds} />
           )}
-        </Canvas>
+        </FiberScene>
       </div>
       <canvas
         ref={canvasRef}
