@@ -394,7 +394,6 @@ export default function App({
         {mode === "design" ? <Intro /> : null}
         <Canvas mode="concurrent">
           <OrbitControls />
-          <Perf />
           {mode === "design" ? (
             <MySeed seed={mySeed} />
           ) : (
