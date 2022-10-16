@@ -19,7 +19,6 @@ import consts from '../lib/consts';
 import { Seed, SeedWithUser, randSeed } from '../lib/seed';
 import { useCanvas, useStore } from '../lib/store';
 import styles from './app.module.scss';
-import env from './env';
 import { FiberScene } from './scene';
 
 const TRAIL_LENGTH = 300;
@@ -60,7 +59,7 @@ function drawCoordinates(
   ctx.stroke();
 }
 
-const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_KEY, {
+const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
   cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
   authEndpoint: '/api/auth',
 });

@@ -1,7 +1,5 @@
+const { AIRTABLE_API_KEY, AIRTABLE_BASE } = process.env;
 import Airtable, { FieldSet } from 'airtable';
-import env from './env';
-
-const { AIRTABLE_API_KEY, AIRTABLE_BASE } = env;
 
 const base = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(AIRTABLE_BASE);
 
