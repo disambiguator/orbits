@@ -1,5 +1,5 @@
-import Pusher from "pusher";
-import env from "./env";
+import Pusher from 'pusher';
+import env from './env';
 
 const {
   APP_ID: appId,
