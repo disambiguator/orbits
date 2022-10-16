@@ -21,7 +21,7 @@ export const FiberScene = ({
   return (
     <>
       {gui && <Leva hideCopyButton fill={isMobile} titleBar={false} />}
-      <Canvas mode="concurrent" {...rest}>
+      <Canvas {...rest}>
         {controls && <OrbitControls />}
         {children}
       </Canvas>
