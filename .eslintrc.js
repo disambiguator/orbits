@@ -3,12 +3,12 @@ module.exports = {
   parser: '@typescript-eslint/parser', // Specifies the ESLint parser
   extends: [
     'eslint:recommended',
-    'plugin:import/errors',
+    'next/core-web-vitals',
+    'plugin:import/recommended',
     'plugin:import/typescript',
-    'plugin:react-hooks/recommended',
-    'plugin:react/recommended', // Uses the recommended rules from @eslint-plugin-react
-    'plugin:@typescript-eslint/recommended', // Uses the recommended rules from @typescript-eslint/eslint-plugin
-    'plugin:prettier/recommended', // Enables eslint-plugin-prettier and displays prettier errors as ESLint errors. Make sure this is always the last configuration in the extends array.
+    'plugin:@typescript-eslint/recommended',
+    'problems',
+    'prettier',
   ],
   parserOptions: {
     ecmaVersion: 2018, // Allows for the parsing of modern ECMAScript features
@@ -20,10 +20,11 @@ module.exports = {
   rules: {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-non-null-assertion': 'off',
-    '@typescript-eslint/ban-ts-comment': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     'prefer-destructuring': 2,
     'react/prop-types': 'off',
+    'import/no-cycle': 2,
+    'no-console': 'off',
     'sort-imports': ['error', { ignoreDeclarationSort: true }],
     'import/order': [
       'error',
@@ -42,10 +43,14 @@ module.exports = {
       },
     ],
     'object-shorthand': ['error', 'always'],
+    'prefer-arrow-callback': 'off', // configs with react/display-name
   },
   env: {
     browser: true,
     node: true,
+  },
+  globals: {
+    JSX: true,
   },
   settings: {
     react: {

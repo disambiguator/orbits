@@ -1,26 +1,25 @@
-import { Line, Sphere } from "@react-three/drei";
-import { Text } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
-import { Leva, useControls } from "leva";
-import { flow } from "lodash";
-import Link from "next/link";
-import Pusher from "pusher-js";
-import * as PusherTypes from "pusher-js";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Line, Sphere, Text } from '@react-three/drei';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useControls } from 'leva';
+import Link from 'next/link';
+import Pusher, { PresenceChannel } from 'pusher-js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioListener,
   CanvasTexture,
   FrontSide,
   Group,
+  Mesh,
+  MeshBasicMaterial,
   PositionalAudio,
   Vector3,
-} from "three";
-import { Line2 } from "three-stdlib";
-import consts from "../lib/consts";
-import { Seed, SeedWithUser, randSeed } from "../lib/seed";
-import { useStore } from "../lib/store";
-import styles from "./app.module.scss";
-import { FiberScene } from "./scene";
+} from 'three';
+import { Line2 } from 'three-stdlib';
+import consts from '../lib/consts';
+import { Seed, SeedWithUser, randSeed } from '../lib/seed';
+import { useStore } from '../lib/store';
+import styles from './app.module.scss';
+import { FiberScene } from './scene';
 
 const TRAIL_LENGTH = 300;
 const INTRO_TRAIL_LENGTH = 10000;
@@ -39,13 +38,13 @@ function drawCoordinates(
   ctx: CanvasRenderingContext2D,
   [x1, y1]: Coords,
   [x2, y2]: Coords,
-  seed: Seed
+  seed: Seed,
 ) {
   ctx.strokeStyle = seed.color;
   ctx.lineWidth = scale(
     seed.radius,
     [consts.RADIUS_MIN, consts.RADIUS_MAX],
-    [STROKE_MIN, STROKE_MAX]
+    [STROKE_MIN, STROKE_MAX],
   );
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -62,15 +61,143 @@ function drawCoordinates(
 
 const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
   cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
-  authEndpoint: "/api/auth",
+  authEndpoint: '/api/auth',
 });
 
 const generatePosition = (p: Seed, points: Vector3, time: number) =>
   points.setFromSphericalCoords(
     p.radius,
     p.theta + time * p.thetaSpeed,
-    p.phi + time * p.phiSpeed
+    p.phi + time * p.phiSpeed,
   );
+
+const Tone = ({
+  freq,
+  position,
+}: {
+  freq: number;
+  position: [number, number, number];
+}) => {
+  const { camera, clock } = useThree();
+  const [audio, setAudio] = useState<PositionalAudio>(null);
+
+  const listener = useMemo(() => new AudioListener(), []);
+
+  useEffect(() => {
+    camera.add(listener);
+
+    return () => {
+      camera.remove(listener);
+    };
+  }, [camera, listener]);
+
+  useEffect(() => {
+    if (audio) {
+      const oscillator = listener.context.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(freq, clock.elapsedTime);
+
+      oscillator.start(0);
+
+      audio.setNodeSource(oscillator as unknown as AudioBufferSourceNode);
+      audio.setRefDistance(1);
+      audio.setVolume(0.3);
+      audio.setRolloffFactor(15);
+
+      return () => {
+        oscillator.stop();
+      };
+    }
+  }, [listener, clock, audio, freq]);
+
+  return (
+    <>
+      <positionalAudio position={position} ref={setAudio} args={[listener]} />
+    </>
+  );
+};
+
+const vecToUV = (vec: Vector3): [number, number] => {
+  const u = (Math.atan2(vec.x, vec.z) / (2 * Math.PI) + 0.5) * textureWidth;
+  const v = (vec.y * 0.5 + 0.5) * textureHeight;
+
+  return [u, v];
+};
+
+const Spiro = React.memo(function Spiro({
+  seed,
+  trailLength,
+  draw,
+}: {
+  seed: Seed;
+  trailLength: number;
+  draw: boolean;
+}) {
+  const lineRef = useRef<Line2>(null);
+  const points = useMemo(
+    () =>
+      new Vector3().setFromSphericalCoords(seed.radius, seed.theta, seed.phi),
+    [seed],
+  );
+  const trails = useRef<Array<number>>(
+    new Array(trailLength).fill(points.toArray()).flat(),
+  );
+  const canvas = useStore((state) => state.canvas);
+  const canvasContext = useMemo(() => canvas.getContext('2d'), [canvas]);
+  const clock = useThree((three) => three.clock);
+
+  useEffect(() => {
+    console.log('regen trail');
+    const newTrails = [];
+    for (let i = 0; i < trailLength; i++) {
+      generatePosition(
+        seed,
+        points,
+        clock.elapsedTime - (trailLength - i) / 60,
+      );
+
+      newTrails[i * 3] = points.x;
+      newTrails[i * 3 + 1] = points.y;
+      newTrails[i * 3 + 2] = points.z;
+    }
+    trails.current = newTrails;
+  }, [seed, points, trailLength, clock]);
+
+  useFrame(({ clock }) => {
+    const { geometry } = lineRef.current!;
+
+    const oldCoords = vecToUV(points);
+
+    generatePosition(seed, points, clock.elapsedTime);
+    const newTrails = [
+      ...trails.current.slice(3),
+      points.x,
+      points.y,
+      points.z,
+    ];
+
+    points.normalize();
+    const newCoords = vecToUV(points);
+
+    if (draw) drawCoordinates(canvasContext, oldCoords, newCoords, seed);
+
+    geometry.setPositions(newTrails);
+    trails.current = newTrails;
+  });
+
+  return (
+    <group rotation={[0, Math.PI / 2, 0]}>
+      <Line
+        ref={lineRef}
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        color={seed.color}
+        points={new Array(trailLength).fill(points.toArray())}
+        linewidth={3}
+      />
+    </group>
+  );
+});
 
 const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   const groupRef = useRef<Group>();
@@ -111,53 +238,6 @@ const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   );
 };
 
-const Tone = ({
-  freq,
-  position,
-}: {
-  freq: number;
-  position: [number, number, number];
-}) => {
-  const { camera, clock } = useThree();
-  const [audio, setAudio] = useState<PositionalAudio>(null);
-
-  const listener = useMemo(() => new AudioListener(), []);
-
-  useEffect(() => {
-    camera.add(listener);
-
-    return () => {
-      camera.remove(listener);
-    };
-  }, [camera, listener]);
-
-  useEffect(() => {
-    if (audio) {
-      const oscillator = listener.context.createOscillator();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(freq, clock.elapsedTime);
-
-      oscillator.start(0);
-
-      //@ts-ignore
-      audio.setNodeSource(oscillator);
-      audio.setRefDistance(1);
-      audio.setVolume(0.3);
-      audio.setRolloffFactor(15);
-
-      return () => {
-        oscillator.stop();
-      };
-    }
-  }, [listener, clock, audio, freq]);
-
-  return (
-    <>
-      <positionalAudio position={position} ref={setAudio} args={[listener]} />
-    </>
-  );
-};
-
 const MySeed = ({
   seed: { radius, thetaSpeed, phiSpeed, color, ...rest },
 }: {
@@ -180,8 +260,8 @@ const MySeed = ({
 };
 
 const Background = () => {
-  const materialRef = useRef<THREE.MeshBasicMaterial>();
-  const sphereRef = useRef<THREE.Mesh>();
+  const materialRef = useRef<MeshBasicMaterial>();
+  const sphereRef = useRef<Mesh>();
   const canvas = useStore((state) => state.canvas);
 
   useEffect(() => {
@@ -203,86 +283,6 @@ const Background = () => {
   );
 };
 
-const vecToUV = (vec: Vector3): [number, number] => {
-  const u = (Math.atan2(vec.x, vec.z) / (2 * Math.PI) + 0.5) * textureWidth;
-  const v = (vec.y * 0.5 + 0.5) * textureHeight;
-
-  return [u, v];
-};
-
-const Spiro = React.memo(function Spiro({
-  seed,
-  trailLength,
-  draw,
-}: {
-  seed: Seed;
-  trailLength: number;
-  draw: boolean;
-}) {
-  const lineRef = useRef<Line2>(null);
-  const points = useMemo(
-    () =>
-      new Vector3().setFromSphericalCoords(seed.radius, seed.theta, seed.phi),
-    [seed]
-  );
-  const trails = useRef<Array<number>>(
-    new Array(trailLength).fill(points.toArray()).flat()
-  );
-  const canvas = useStore((state) => state.canvas);
-  const canvasContext = useMemo(() => canvas.getContext("2d"), [canvas]);
-  const clock = useThree((three) => three.clock);
-
-  useEffect(() => {
-    console.log("regen trail");
-    const newTrails = [];
-    for (let i = 0; i < trailLength; i++) {
-      generatePosition(
-        seed,
-        points,
-        clock.elapsedTime - (trailLength - i) / 60
-      );
-
-      newTrails[i * 3] = points.x;
-      newTrails[i * 3 + 1] = points.y;
-      newTrails[i * 3 + 2] = points.z;
-    }
-    trails.current = newTrails;
-  }, [seed, points, trailLength, clock]);
-
-  useFrame(({ clock }) => {
-    const { geometry } = lineRef.current!;
-
-    const oldCoords = vecToUV(points);
-
-    generatePosition(seed, points, clock.elapsedTime);
-    const newTrails = [
-      ...trails.current.slice(3),
-      points.x,
-      points.y,
-      points.z,
-    ];
-
-    points.normalize();
-    const newCoords = vecToUV(points);
-
-    if (draw) drawCoordinates(canvasContext, oldCoords, newCoords, seed);
-
-    geometry.setPositions(newTrails);
-    trails.current = newTrails;
-  });
-
-  return (
-    <group rotation={[0, Math.PI / 2, 0]}>
-      <Line
-        ref={lineRef}
-        color={seed.color}
-        points={new Array(trailLength).fill(points.toArray())}
-        linewidth={3}
-      />
-    </group>
-  );
-});
-
 const Main = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
   const [seeds, setSeeds] = useState(initialSeeds);
   //   useEffect(() => {
@@ -293,46 +293,46 @@ const Main = ({ initialSeeds }: { initialSeeds: SeedWithUser[] }) => {
 
   useEffect(() => {
     const presenceChannel = pusher.subscribe(
-      "presence-orbits"
-    ) as PusherTypes.PresenceChannel;
+      'presence-orbits',
+    ) as PresenceChannel;
 
-    presenceChannel.bind("pusher:subscription_succeeded", () => {
-      console.log("subscribed");
+    presenceChannel.bind('pusher:subscription_succeeded', () => {
+      console.log('subscribed');
       const userId = presenceChannel.members.me.id;
       const initialSeed = { ...randSeed(), userId };
-      window.fetch("/api/push", {
-        method: "POST",
+      window.fetch('/api/push', {
+        method: 'POST',
         body: JSON.stringify({ seed: initialSeed }),
       });
     });
 
-    presenceChannel.bind("pusher:member_removed", (member: { id: string }) => {
-      console.log("member_removed");
+    presenceChannel.bind('pusher:member_removed', (member: { id: string }) => {
+      console.log('member_removed');
       setSeeds((seeds) =>
         seeds.find((s) => s.userId === member.id)
           ? seeds.filter((s) => s.userId !== member.id)
-          : seeds
+          : seeds,
       );
     });
 
     return () => {
       presenceChannel.unbind();
-      pusher.unsubscribe("presence-orbits");
+      pusher.unsubscribe('presence-orbits');
     };
   }, []);
 
   useEffect(() => {
-    const channel = pusher.subscribe("orbits");
+    const channel = pusher.subscribe('orbits');
 
-    channel.bind("new-neighbor", ({ seed }: { seed: SeedWithUser }) => {
+    channel.bind('new-neighbor', ({ seed }: { seed: SeedWithUser }) => {
       setSeeds((seeds) =>
-        seeds.find((s) => s.userId === seed.userId) ? seeds : [...seeds, seed]
+        seeds.find((s) => s.userId === seed.userId) ? seeds : [...seeds, seed],
       );
     });
 
     return () => {
       channel.unbind();
-      pusher.unsubscribe("orbits");
+      pusher.unsubscribe('orbits');
     };
   }, []);
 
@@ -350,8 +350,8 @@ const Intro = () => {
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "row",
+        display: 'flex',
+        flexDirection: 'row',
       }}
     >
       <h2>Design your orbit!</h2>
@@ -367,7 +367,7 @@ export default function App({
   mode,
 }: {
   initialSeeds?: Array<SeedWithUser>;
-  mode?: "design" | "viewing";
+  mode?: 'design' | 'viewing';
 }) {
   const canvasRef = useRef<HTMLCanvasElement>();
   const { set, mySeed } = useStore();
@@ -396,9 +396,9 @@ export default function App({
         }
       `}</style>
       <div className={styles.container}>
-        {mode === "design" ? <Intro /> : null}
+        {mode === 'design' ? <Intro /> : null}
         <FiberScene controls gui>
-          {mode === "design" ? (
+          {mode === 'design' ? (
             <MySeed seed={mySeed} />
           ) : (
             <Main initialSeeds={initialSeeds} />
@@ -409,7 +409,7 @@ export default function App({
         ref={canvasRef}
         height={textureHeight}
         width={textureWidth}
-        style={{ display: "none" }}
+        style={{ display: 'none' }}
         // style={{ position: "absolute", left: 0, top: 0, zIndex: 1 }}
       />
     </React.StrictMode>

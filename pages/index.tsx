@@ -1,12 +1,12 @@
-import { GetServerSideProps } from "next";
-import React from "react";
-import App from "../lib/app";
-import { SeedWithUser } from "../lib/seed";
+import { GetServerSideProps } from 'next';
+import React from 'react';
+import App from '../lib/app';
+import { SeedWithUser } from '../lib/seed';
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const url =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
+    process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000'
       : `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
 
   const res = await fetch(`${url}/api/seeds`);

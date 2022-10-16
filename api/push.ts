@@ -1,26 +1,26 @@
-import { VercelRequest, VercelResponse } from "@vercel/node";
-import { airtablePut } from "../lib/airtable";
-import pusher from "../lib/pusher";
-import { Seed } from "../lib/seed";
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { airtablePut } from '../lib/airtable';
+import pusher from '../lib/pusher';
+import { Seed } from '../lib/seed';
 
 const addToOrbits = ({ chord, ...rest }: Seed) => {
-  const serializedSeed = { ...rest, chord: chord.join(",") };
-  return airtablePut("orbits", serializedSeed);
+  const serializedSeed = { ...rest, chord: chord.join(',') };
+  return airtablePut('orbits', serializedSeed);
 };
 
 const broadcastNeighbor = (seed: Seed) =>
   Promise.all([
-    pusher.trigger("orbits", "new-neighbor", { seed }),
+    pusher.trigger('orbits', 'new-neighbor', { seed }),
     addToOrbits(seed),
   ]);
 
 module.exports = async (
   req: VercelRequest & { body: Seed },
-  res: VercelResponse
+  res: VercelResponse,
 ) => {
   await broadcastNeighbor(JSON.parse(req.body).seed)
     .then(() => {
-      res.status(200).send("sent event succesfully");
+      res.status(200).send('sent event succesfully');
     })
     .catch((e) => {
       console.error(e.message);

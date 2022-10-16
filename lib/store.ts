@@ -1,5 +1,5 @@
-import create, { SetState } from "zustand";
-import { Seed, randSeed } from "./seed";
+import create, { SetState } from 'zustand';
+import { Seed, randSeed } from './seed';
 
 export type State = {
   canvas: HTMLCanvasElement | null;
