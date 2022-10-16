@@ -4,8 +4,6 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'next/core-web-vitals',
-    'plugin:import/recommended',
-    'plugin:import/typescript',
     'plugin:@typescript-eslint/recommended',
     'problems',
     'prettier',
@@ -23,7 +21,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'off',
     'prefer-destructuring': 2,
     'react/prop-types': 'off',
-    'import/no-cycle': 2,
     'no-console': 'off',
     'sort-imports': ['error', { ignoreDeclarationSort: true }],
     'import/order': [
