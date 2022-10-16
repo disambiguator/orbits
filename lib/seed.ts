@@ -13,7 +13,8 @@ export type Seed = {
 };
 export type SeedWithUser = Seed & { userId: string };
 export type ServerSeed = Omit<SeedWithUser, 'chord'> & { chord: string };
-export const newChord = () => [sample(notes), sample(notes), sample(notes)];
+export const newChord = () =>
+  [sample(notes), sample(notes), sample(notes)] as [number, number, number];
 
 export const randSeed = (): Seed => ({
   radius: rand(consts.RADIUS_MIN, consts.RADIUS_MAX),

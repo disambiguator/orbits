@@ -17,8 +17,9 @@ import {
 import { Line2 } from 'three-stdlib';
 import consts from '../lib/consts';
 import { Seed, SeedWithUser, randSeed } from '../lib/seed';
-import { useStore } from '../lib/store';
+import { useCanvas, useStore } from '../lib/store';
 import styles from './app.module.scss';
+import env from './env';
 import { FiberScene } from './scene';
 
 const TRAIL_LENGTH = 300;
@@ -59,7 +60,7 @@ function drawCoordinates(
   ctx.stroke();
 }
 
-const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+const pusher = new Pusher(env.NEXT_PUBLIC_PUSHER_KEY, {
   cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
   authEndpoint: '/api/auth',
 });
@@ -79,7 +80,7 @@ const Tone = ({
   position: [number, number, number];
 }) => {
   const { camera, clock } = useThree();
-  const [audio, setAudio] = useState<PositionalAudio>(null);
+  const [audio, setAudio] = useState<PositionalAudio | null>(null);
 
   const listener = useMemo(() => new AudioListener(), []);
 
@@ -142,8 +143,8 @@ const Spiro = React.memo(function Spiro({
   const trails = useRef<Array<number>>(
     new Array(trailLength).fill(points.toArray()).flat(),
   );
-  const canvas = useStore((state) => state.canvas);
-  const canvasContext = useMemo(() => canvas.getContext('2d'), [canvas]);
+  const canvas = useCanvas();
+  const canvasContext = useMemo(() => canvas.getContext('2d')!, [canvas]);
   const clock = useThree((three) => three.clock);
 
   useEffect(() => {
@@ -189,8 +190,6 @@ const Spiro = React.memo(function Spiro({
     <group rotation={[0, Math.PI / 2, 0]}>
       <Line
         ref={lineRef}
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         color={seed.color}
         points={new Array(trailLength).fill(points.toArray())}
         linewidth={3}
@@ -200,7 +199,7 @@ const Spiro = React.memo(function Spiro({
 });
 
 const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
-  const groupRef = useRef<Group>();
+  const groupRef = useRef<Group>(null);
   const { thetaSpeed, theta, phi, phiSpeed, radius, color, chord } = props.seed;
 
   useFrame(({ clock }) => {
@@ -260,20 +259,20 @@ const MySeed = ({
 };
 
 const Background = () => {
-  const materialRef = useRef<MeshBasicMaterial>();
+  const materialRef = useRef<MeshBasicMaterial>(null);
   const sphereRef = useRef<Mesh>();
-  const canvas = useStore((state) => state.canvas);
+  const canvas = useCanvas();
 
   useEffect(() => {
-    materialRef.current.map = new CanvasTexture(canvas);
-    sphereRef.current.geometry.scale(1, -1, 1);
+    materialRef.current!.map = new CanvasTexture(canvas);
+    sphereRef.current!.geometry.scale(1, -1, 1);
   }, [canvas]);
 
   useFrame(() => {
     // const context = canvas.getContext("2d");
     // context.fillStyle = "rgba(0, 0, 0, 0.01)";
     // context.fillRect(0, 0, textureWidth, textureHeight);
-    if (materialRef.current.map) materialRef.current.map.needsUpdate = true;
+    if (materialRef.current!.map) materialRef.current!.map.needsUpdate = true;
   });
 
   return (
@@ -366,10 +365,10 @@ export default function App({
   initialSeeds,
   mode,
 }: {
-  initialSeeds?: Array<SeedWithUser>;
+  initialSeeds: Array<SeedWithUser>;
   mode?: 'design' | 'viewing';
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { set, mySeed } = useStore();
   useEffect(() => {
     set({ canvas: canvasRef.current });

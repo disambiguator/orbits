@@ -6,10 +6,11 @@ export type State = {
   set: SetState<State>;
   mySeed: Seed;
 };
-const useStore = create<State>((set) => ({
+
+export const useStore = create<State>((set) => ({
   set,
   canvas: null,
   mySeed: randSeed(),
 }));
 
-export { useStore };
+export const useCanvas = () => useStore((state) => state.canvas)!;

@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { airtableDelete } from '../lib/airtable';
 import pusher from '../lib/pusher';
 
-const deleteEvents = async (memberRemovalEvents) => {
+const deleteEvents = async (memberRemovalEvents: { user_id: string }[]) => {
   if (memberRemovalEvents.length > 0) {
     await airtableDelete(
       'orbits',
@@ -25,6 +25,7 @@ module.exports = async (
         event.channel === 'presence-orbits' && event.name === 'member_removed'
       );
     });
+    // @ts-expect-error - fix this so user_ids are in events
     deleteEvents(memberRemovalEvents)
       .then(() => {
         res.status(200).end();
