@@ -22,7 +22,7 @@ import styles from './app.module.scss';
 import { FiberScene } from './scene';
 
 const TRAIL_LENGTH = 300;
-const INTRO_TRAIL_LENGTH = 10000;
+const INTRO_TRAIL_LENGTH = 1000;
 const STROKE_MIN = 1;
 const STROKE_MAX = 10;
 
@@ -71,6 +71,10 @@ const generatePosition = (p: Seed, points: Vector3, time: number) =>
     p.phi + time * p.phiSpeed,
   );
 
+const useListener = () => {
+  return useStore((s) => s.listener)!;
+};
+
 const Tone = ({
   freq,
   position,
@@ -78,18 +82,9 @@ const Tone = ({
   freq: number;
   position: [number, number, number];
 }) => {
-  const { camera, clock } = useThree();
+  const { clock } = useThree();
   const [audio, setAudio] = useState<PositionalAudio | null>(null);
-
-  const listener = useMemo(() => new AudioListener(), []);
-
-  useEffect(() => {
-    camera.add(listener);
-
-    return () => {
-      camera.remove(listener);
-    };
-  }, [camera, listener]);
+  const listener = useListener();
 
   useEffect(() => {
     if (audio) {
@@ -360,6 +355,24 @@ const Intro = () => {
   );
 };
 
+const SceneContents = ({ children }: { children: JSX.Element }) => {
+  const { camera } = useThree();
+  const set = useStore((s) => s.set);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const newListener = new AudioListener();
+    camera.add(newListener);
+    set({ listener: newListener });
+    setMounted(true);
+    return () => {
+      camera.remove(newListener);
+    };
+  }, [set, camera]);
+
+  return mounted ? children : null;
+};
+
 export default function App({
   initialSeeds,
   mode,
@@ -396,11 +409,13 @@ export default function App({
       <div className={styles.container}>
         {mode === 'design' ? <Intro /> : null}
         <FiberScene controls gui>
-          {mode === 'design' ? (
-            <MySeed seed={mySeed} />
-          ) : (
-            <Main initialSeeds={initialSeeds} />
-          )}
+          <SceneContents>
+            {mode === 'design' ? (
+              <MySeed seed={mySeed} />
+            ) : (
+              <Main initialSeeds={initialSeeds} />
+            )}
+          </SceneContents>
         </FiberScene>
       </div>
       <canvas
