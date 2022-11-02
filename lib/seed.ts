@@ -9,7 +9,6 @@ export type Seed = {
   thetaSpeed: number;
   phiSpeed: number;
   color: string;
-  chord: number[];
 };
 export type SeedWithUser = Seed & { userId: string };
 export type ServerSeed = Omit<SeedWithUser, 'chord'> & { chord: string };
@@ -23,5 +22,4 @@ export const randSeed = (): Seed => ({
   thetaSpeed: rand(0, 0.5),
   phiSpeed: rand(0, 0.5),
   color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-  chord: newChord(),
 });

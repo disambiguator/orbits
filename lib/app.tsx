@@ -1,6 +1,7 @@
 import { Line, Sphere, Text } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useControls } from 'leva';
+import { range } from 'lodash';
 import Link from 'next/link';
 import Pusher, { PresenceChannel } from 'pusher-js';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -192,9 +193,30 @@ const Spiro = React.memo(function Spiro({
   );
 });
 
+const notes = range(-21, 21).map((i) => 440 * 2 ** (i / 12));
+function scaleRange(
+  number: number,
+  inMin: number,
+  inMax: number,
+  outMin = 0,
+  outMax = 41,
+) {
+  return notes[
+    Math.floor(
+      ((number - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin,
+    )
+  ];
+}
+
 const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   const groupRef = useRef<Group>(null);
-  const { thetaSpeed, theta, phi, phiSpeed, radius, color, chord } = props.seed;
+  const { thetaSpeed, theta, phi, phiSpeed, radius, color } = props.seed;
+
+  const chord = [
+    scaleRange(thetaSpeed, 0, 0.5),
+    scaleRange(phiSpeed, 0, 0.5),
+    scaleRange(radius, 1, 5),
+  ];
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
