@@ -12,7 +12,7 @@
     "test-ci": "tsc && eslint . --ext=ts,tsx,js,jsx && npm run prettier",
     "build": "next build",
     "watch": "tsc --watch",
-    "start": "vercel dev"
+    "start": "next dev"
   },
   "repository": {
     "type": "git",

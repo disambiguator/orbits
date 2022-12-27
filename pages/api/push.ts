@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { airtablePut } from '../lib/airtable';
-import pusher from '../lib/pusher';
-import { Seed } from '../lib/seed';
+import { airtablePut } from '../../lib/airtable';
+import pusher from '../../lib/pusher';
+import { Seed } from '../../lib/seed';
 
 const addToOrbits = (seed: Seed) => {
   return airtablePut('orbits', seed);

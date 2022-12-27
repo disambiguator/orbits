@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { airtableDelete } from '../lib/airtable';
-import pusher from '../lib/pusher';
+import { airtableDelete } from '../../lib/airtable';
+import pusher from '../../lib/pusher';
 
 const deleteEvents = async (memberRemovalEvents: { user_id: string }[]) => {
   if (memberRemovalEvents.length > 0) {

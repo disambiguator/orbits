@@ -215,7 +215,7 @@ const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   const chord = [
     scaleRange(thetaSpeed, 0, 0.5),
     scaleRange(phiSpeed, 0, 0.5),
-    scaleRange(radius, 1, 5),
+    scaleRange(radius, consts.RADIUS_MIN, consts.RADIUS_MAX),
   ];
 
   useFrame(({ clock }) => {
