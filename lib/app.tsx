@@ -32,8 +32,13 @@ const textureWidth = 1000;
 
 type Coords = [number, number];
 
-const scale = (value: number, r1: [number, number], r2: [number, number]) =>
-  ((value - r1[0]) * (r2[1] - r2[0])) / (r1[1] - r1[0]) + r2[0];
+const scale = (value: number, r1: [number, number], r2: [number, number]) => {
+  if (value < r1[0] || value > r1[1]) {
+    throw `${value} out of range ${r1}`;
+  }
+
+  return ((value - r1[0]) * (r2[1] - r2[0])) / (r1[1] - r1[0]) + r2[0];
+};
 
 function drawCoordinates(
   ctx: CanvasRenderingContext2D,
@@ -194,18 +199,8 @@ const Spiro = React.memo(function Spiro({
 });
 
 const notes = range(-21, 21).map((i) => 440 * 2 ** (i / 12));
-function scaleRange(
-  number: number,
-  inMin: number,
-  inMax: number,
-  outMin = 0,
-  outMax = 41,
-) {
-  return notes[
-    Math.floor(
-      ((number - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin,
-    )
-  ];
+function scaleRange(number: number, range: [number, number]) {
+  return notes[Math.floor(scale(number, range, [0, 41]))];
 }
 
 const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
@@ -213,9 +208,9 @@ const Orbits = (props: { seed: Seed; trailLength: number; draw: boolean }) => {
   const { thetaSpeed, theta, phi, phiSpeed, radius, color } = props.seed;
 
   const chord = [
-    scaleRange(thetaSpeed, 0, 0.5),
-    scaleRange(phiSpeed, 0, 0.5),
-    scaleRange(radius, consts.RADIUS_MIN, consts.RADIUS_MAX),
+    scaleRange(thetaSpeed, [0, 0.5]),
+    scaleRange(phiSpeed, [0, 0.5]),
+    scaleRange(radius, [consts.RADIUS_MIN, consts.RADIUS_MAX]),
   ];
 
   useFrame(({ clock }) => {
