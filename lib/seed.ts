@@ -1,4 +1,5 @@
 import { sample } from 'lodash';
+import { HexColorString } from 'three';
 import consts from './consts';
 import { notes, rand } from './helpers';
 
@@ -8,7 +9,7 @@ export type Seed = {
   phi: number;
   thetaSpeed: number;
   phiSpeed: number;
-  color: string;
+  color: HexColorString;
 };
 export type SeedWithUser = Seed & { userId: string };
 export type ServerSeed = Omit<SeedWithUser, 'chord'> & { chord: string };

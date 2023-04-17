@@ -16,11 +16,11 @@ import {
   Vector3,
 } from 'three';
 import { Line2 } from 'three-stdlib';
+import styles from './app.module.scss';
+import { FiberScene } from './scene';
 import consts from '../lib/consts';
 import { Seed, SeedWithUser, randSeed } from '../lib/seed';
 import { useCanvas, useStore } from '../lib/store';
-import styles from './app.module.scss';
-import { FiberScene } from './scene';
 
 const TRAIL_LENGTH = 300;
 const INTRO_TRAIL_LENGTH = 1000;
@@ -258,7 +258,7 @@ const MySeed = ({
     thetaSpeed: { value: thetaSpeed, min: 0, max: 0.5 },
     phiSpeed: { value: phiSpeed, min: 0, max: 0.5 },
     color,
-  });
+  }) as Omit<Seed, 'phi' | 'theta'>;
 
   return (
     <Orbits
@@ -271,7 +271,7 @@ const MySeed = ({
 
 const Background = () => {
   const materialRef = useRef<MeshBasicMaterial>(null);
-  const sphereRef = useRef<Mesh>();
+  const sphereRef = useRef<Mesh>(null);
   const canvas = useCanvas();
 
   useEffect(() => {
