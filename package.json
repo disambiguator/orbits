@@ -52,7 +52,7 @@
     "airtable": "^0.12.1",
     "leva": "^0.9.8",
     "lodash": "^4.17.20",
-    "next": "^13.0.3",
+    "next": "^14.0.0",
     "node-fetch": "^3.2.10",
     "open-simplex-noise": "^2.4.0-pre4",
     "pusher": "^5.0.0",
