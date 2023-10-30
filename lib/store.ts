@@ -1,5 +1,5 @@
 import { AudioListener } from 'three';
-import create, { StoreApi } from 'zustand';
+import { StoreApi, create } from 'zustand';
 import { Seed, randSeed } from './seed';
 
 export type State = {
